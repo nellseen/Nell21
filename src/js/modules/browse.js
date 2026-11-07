@@ -4,6 +4,18 @@ import { renderCards } from './movies.js';
 import { getWatchlist } from './watchlist.js';
 
 let page = 0; let totalPages = 1; let requestSequence = 0; let watchlistMode = false; let mediaType = 'movie';
+function setActiveMediaTab(type) {
+  document.querySelectorAll('[data-media-tab]').forEach(item => {
+    const active = item.dataset.mediaTab === type;
+    item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active));
+  });
+}
+function setActiveSidebar(action, genreId = '') {
+  document.querySelectorAll('[data-side-action], [data-sidebar-genre]').forEach(item => {
+    const active = genreId ? item.dataset.sidebarGenre === genreId : item.dataset.sideAction === action;
+    item.classList.toggle('active', active);
+  });
+}
 function setSortOptions() {
   const select = byId('sortFilter'); select.replaceChildren();
   const options = [['popularity.desc', 'Terpopuler'], ['vote_average.desc', 'Rating tertinggi'], [mediaType === 'tv' ? 'first_air_date.desc' : 'primary_release_date.desc', 'Terbaru']];
@@ -53,20 +65,47 @@ export async function initBrowse(genresPromise) {
     byId('genreFilter').firstElementChild.value = '';
     try {
       const data = await promise;
-      for (const genre of data.genres || []) { const option = element('option', '', genre.name); option.value = String(genre.id); byId('genreFilter').append(option); }
-    } catch { byId('browseMessage').textContent = 'Daftar genre belum dapat dimuat.'; }
+      const genres = data.genres || [];
+      for (const genre of genres) { const option = element('option', '', genre.name); option.value = String(genre.id); byId('genreFilter').append(option); }
+      const host = byId('sidebarGenres'); host.replaceChildren(); host.dataset.mediaType = mediaType;
+      for (const genre of genres) {
+        const button = element('button', '', genre.name); button.type = 'button'; button.dataset.sidebarGenre = String(genre.id); button.dataset.sidebarMediaType = mediaType; host.append(button);
+      }
+    } catch { byId('browseMessage').textContent = 'Daftar genre belum dapat dimuat.'; byId('sidebarGenres').replaceChildren(element('span', 'sidebar-hint', 'Genre belum tersedia.')); }
   }
+  async function selectMediaType(type, genreId = '') {
+    mediaType = type === 'tv' ? 'tv' : 'movie';
+    watchlistMode = false; setSortOptions(); setActiveMediaTab(mediaType);
+    await loadGenres(api.genres(mediaType));
+    byId('genreFilter').value = genreId;
+    await loadPage(true);
+  }
+  function scrollTo(target) { document.querySelector(target)?.scrollIntoView({ behavior: 'smooth', block: 'start' }); }
   await loadGenres(genresPromise);
-  document.querySelectorAll('[data-media-tab]').forEach(tab => tab.addEventListener('click', async () => {
-    mediaType = tab.dataset.mediaTab;
-    document.querySelectorAll('[data-media-tab]').forEach(item => { const active = item === tab; item.classList.toggle('active', active); item.setAttribute('aria-selected', String(active)); });
-    watchlistMode = false; setSortOptions(); await loadGenres(api.genres(mediaType)); await loadPage(true);
-  }));
+  document.querySelectorAll('[data-media-tab]').forEach(tab => tab.addEventListener('click', () => selectMediaType(tab.dataset.mediaTab)));
   byId('genreFilter').addEventListener('change', () => { watchlistMode = false; loadPage(true); });
   byId('sortFilter').addEventListener('change', () => { watchlistMode = false; loadPage(true); });
   byId('browseMore').addEventListener('click', () => { if (page < totalPages) loadPage(false); });
-  byId('browseNav').addEventListener('click', () => { if (watchlistMode) loadPage(true); });
-  byId('watchlistNav').addEventListener('click', showWatchlist);
+  byId('appSidebar').addEventListener('click', event => {
+    const genre = event.target.closest('[data-sidebar-genre]');
+    if (genre) {
+      const genreId = genre.dataset.sidebarGenre;
+      selectMediaType(genre.dataset.sidebarMediaType, genreId).then(() => { setActiveSidebar('', genreId); scrollTo('#browseSection'); });
+      return;
+    }
+    const action = event.target.closest('[data-side-action]')?.dataset.sideAction;
+    if (!action) return;
+    setActiveSidebar(action);
+    if (action === 'home') scrollTo('#hero');
+    if (action === 'trending') scrollTo('#trending');
+    if (action === 'movies' || action === 'tv') {
+      selectMediaType(action === 'tv' ? 'tv' : 'movie').then(() => scrollTo('#browseSection'));
+    }
+    if (action === 'genres') { scrollTo('#browseSection'); byId('genreFilter').focus({ preventScroll: true }); }
+    if (action === 'watchlist') { showWatchlist(); setActiveSidebar('watchlist'); }
+    if (action === 'search') { byId('searchToggle').click(); }
+  });
+  byId('watchlistNav').addEventListener('click', () => { showWatchlist(); setActiveSidebar('watchlist'); });
   window.addEventListener('watchlistchange', () => { if (watchlistMode) showWatchlist(); });
   await loadPage(true);
 }

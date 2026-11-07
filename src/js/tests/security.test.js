@@ -1,5 +1,6 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { readFile } from 'node:fs/promises';
 import { moviePlayerUrl, tvPlayerUrl, validateSubtitleInput } from '../modules/player.js';
 import { plainText, youtubeEmbed } from '../utils/sanitize.js';
 import { isMovieId } from '../utils/validators.js';
@@ -15,6 +16,14 @@ test('VidLink TV URL requires a valid season and episode', () => {
   assert.equal(tvPlayerUrl(296206, 1, 1), 'https://vidlink.pro/tv/296206/1/1?primaryColor=007AFF&secondaryColor=1D1D1F&iconColor=FFFFFF&icons=default&title=true&poster=true&autoplay=false');
   assert.throws(() => tvPlayerUrl(296206, -1, 1), /season/i);
   assert.throws(() => tvPlayerUrl(296206, 1, 0), /season/i);
+});
+
+test('VidLink iframe is not sandboxed to preserve player compatibility', async () => {
+  const html = await readFile(new URL('../../../index.html', import.meta.url), 'utf8');
+  const playerFrame = html.match(/<iframe id="watchIframe"[^>]*>/)?.[0];
+  assert.ok(playerFrame, 'watch iframe exists');
+  assert.doesNotMatch(playerFrame, /\bsandbox(?:\s|=|>)/);
+  assert.match(playerFrame, /allowfullscreen/);
 });
 
 test('untrusted metadata stays plain text and YouTube keys are validated', () => {
