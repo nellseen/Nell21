@@ -5,8 +5,8 @@ import tmdbRoutes from './routes/tmdb.routes.js';
 import { createApiRateLimit } from './middleware/rate-limit.js';
 import { errorHandler } from './middleware/error-handler.js';
 
-export function createApp(config) {
-  const app = express(); app.disable('x-powered-by'); app.locals.config = config;
+export function createApp(config, app = express()) {
+  app.disable('x-powered-by'); app.locals.config = config;
   app.set('trust proxy', config.trustProxy || false);
   app.use(cors({ origin(origin, callback) { if (!origin || config.clientOrigins.includes(origin)) return callback(null, true); const error = new Error('Origin tidak diizinkan.'); error.status = 403; return callback(error, false); }, methods: ['GET'], allowedHeaders: ['Accept', 'Content-Type'], maxAge: 600 }));
   app.use(express.json({ limit: '16kb' }));
