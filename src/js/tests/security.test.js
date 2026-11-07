@@ -21,12 +21,13 @@ test('VidLink TV URL requires a valid season and episode', () => {
   assert.match(tvPlayerUrl(296206, 1, 1, null, 'jw'), /[?&]player=jw(?:&|$)/);
 });
 
-test('VidLink iframe is not sandboxed to preserve player compatibility', async () => {
+test('VidLink iframe permits media playback without a restrictive sandbox', async () => {
   const html = await readFile(new URL('../../../index.html', import.meta.url), 'utf8');
   const playerFrame = html.match(/<iframe id="watchIframe"[^>]*>/)?.[0];
   assert.ok(playerFrame, 'watch iframe exists');
   assert.doesNotMatch(playerFrame, /\bsandbox(?:\s|=|>)/);
   assert.match(playerFrame, /allowfullscreen/);
+  assert.match(playerFrame, /allow="[^"]*autoplay[^"]*encrypted-media[^"]*"/);
 });
 
 test('untrusted metadata stays plain text and YouTube keys are validated', () => {
