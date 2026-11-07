@@ -1,661 +1,96 @@
-<!DOCTYPE html>
+<!doctype html>
 <html lang="id">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>Tianetflix - Premium Cinematic Experience</title>
-    <!-- Fonts: Inter (Modern iOS Typography) -->
-    <link rel="preconnect" href="https://fonts.googleapis.com">
-    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
-    <!-- Tailwind CSS for styling structure -->
-    <script src="https://cdn.tailwindcss.com"></script>
-    <!-- Phosphor Icons -->
-    <script src="https://unpkg.com/@phosphor-icons/web"></script>
-    
-    <script>
-        tailwind.config = {
-            theme: {
-                extend: {
-                    fontFamily: { sans: ['Inter', 'sans-serif'] },
-                    colors: {
-                        ios: { bg: '#F5F5F7', card: '#FFFFFF', text: '#1D1D1F', sub: '#86868B', accent: '#007AFF' }
-                    }
-                }
-            }
-        }
-    </script>
-
-    <style>
-        /* Custom CSS & Animations */
-        body { background-color: #F5F5F7; color: #1D1D1F; overflow-x: hidden; scroll-behavior: smooth; }
-        
-        /* Glassmorphism */
-        .glass { background: rgba(255, 255, 255, 0.6); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); border-bottom: 1px solid rgba(255, 255, 255, 0.3); }
-        .glass-dark { background: rgba(0, 0, 0, 0.5); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px); }
-        .glass-modal { background: rgba(245, 245, 247, 0.85); backdrop-filter: blur(40px); -webkit-backdrop-filter: blur(40px); }
-
-        /* Hide Scrollbar but keep functionality */
-        .hide-scrollbar::-webkit-scrollbar { display: none; }
-        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
-
-        /* Cinematic Hero Transitions */
-        .hero-transition { transition: all 0.8s cubic-bezier(0.25, 0.8, 0.25, 1); }
-        .hero-overlay { background: linear-gradient(to top, #F5F5F7 0%, transparent 40%, rgba(0,0,0,0.4) 100%); }
-        .hero-video-wrapper { position: absolute; top: 0; left: 0; width: 100%; height: 100%; overflow: hidden; z-index: -1; pointer-events: none; }
-        .hero-video-wrapper iframe { position: absolute; top: 50%; left: 50%; width: 100vw; height: 56.25vw; min-height: 100vh; min-width: 177.77vh; transform: translate(-50%, -50%) scale(1.3); pointer-events: none; opacity: 0; transition: opacity 1.5s ease; }
-
-        /* 3D Card Hover Effect */
-        .movie-card { transition: transform 0.1s ease-out, box-shadow 0.3s ease; transform-style: preserve-3d; will-change: transform; cursor: pointer; }
-        .movie-card:hover { z-index: 10; box-shadow: 0 20px 40px rgba(0,0,0,0.2); }
-        .movie-poster-wrapper { border-radius: 16px; overflow: hidden; background: #e5e5ea; position: relative; width: 100%; aspect-ratio: 2/3; }
-        .movie-poster { width: 100%; height: 100%; object-fit: cover; transition: transform 0.5s ease; will-change: transform; }
-        .movie-card:hover .movie-poster { transform: scale(1.05); }
-
-        /* Shimmer Loading Skeleton */
-        .shimmer { background: #e5e5ea; background-image: linear-gradient(to right, #e5e5ea 0%, #f4f4f5 20%, #e5e5ea 40%, #e5e5ea 100%); background-repeat: no-repeat; background-size: 800px 100%; animation: shimmer 1.5s infinite linear; }
-        @keyframes shimmer { 0% { background-position: -400px 0; } 100% { background-position: 400px 0; } }
-
-        /* Text Shadow for better readability over images */
-        .text-shadow-cinematic { text-shadow: 0 2px 10px rgba(0,0,0,0.5); }
-
-        /* Hover Trailer */
-        .hover-trailer { position: absolute; top: 0; left: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; pointer-events: none; }
-
-        /* Modals */
-        .modal-enter { opacity: 0; transform: scale(0.95); transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1); }
-        .modal-enter-active { opacity: 1; transform: scale(1); }
-        
-        /* Particle Canvas */
-        #particle-canvas { position: absolute; top: 0; left: 0; width: 100%; height: 100%; pointer-events: none; z-index: 1; }
-    </style>
-</head>
-<body class="antialiased">
-
-    <!-- Navbar -->
-    <nav id="navbar" class="fixed top-0 w-full z-50 transition-all duration-500 py-4 px-6 md:px-12 flex items-center justify-between">
-        <div class="flex items-center gap-8">
-            <h1 class="text-2xl font-bold tracking-tighter" style="background: linear-gradient(90deg, #1D1D1F, #86868B); -webkit-background-clip: text; -webkit-text-fill-color: transparent; text-shadow: 0 1px 1px rgba(255,255,255,0.1);">Tianetflix</h1>
-            <div class="hidden md:flex gap-6 text-sm font-medium text-ios-text">
-                <a href="#" class="hover:text-ios-accent transition-colors">Home</a>
-                <a href="#trending" class="hover:text-ios-accent transition-colors">Trending</a>
-                <a href="#movies" class="hover:text-ios-accent transition-colors">Movies</a>
-            </div>
-        </div>
-        <div class="flex items-center gap-4">
-            <div class="relative group">
-                <i class="ph ph-magnifying-glass text-2xl text-ios-text cursor-pointer hover:text-ios-accent transition-colors"></i>
-                <div class="absolute right-0 top-full mt-4 w-72 glass-modal rounded-2xl p-4 shadow-2xl opacity-0 invisible group-hover:opacity-100 group-hover:visible transition-all duration-300 transform origin-top-right scale-95 group-hover:scale-100">
-                    <input type="text" id="searchInput" placeholder="Search movies..." class="w-full bg-white/50 border border-white/40 rounded-xl px-4 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-ios-accent text-ios-text placeholder-ios-sub">
-                    <div id="searchResults" class="mt-3 max-h-64 overflow-y-auto hide-scrollbar flex flex-col gap-2"></div>
-                </div>
-            </div>
-            <div class="w-8 h-8 rounded-full bg-gradient-to-tr from-ios-accent to-purple-400 shadow-sm cursor-pointer border border-white"></div>
-        </div>
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="theme-color" content="#f5f5f7" />
+    <title>Tianetflix — Premium Cinematic Experience</title>
+  </head>
+  <body>
+    <nav id="navbar">
+      <div class="nav-brand-group">
+        <h1 class="brand">Tianetflix</h1>
+        <div class="nav-links"><a href="#hero">Home</a><a href="#trending">Trending</a><a id="browseNav" href="#browseSection">Movies &amp; TV</a></div>
+      </div>
+      <div class="nav-actions">
+        <button id="watchlistNav" type="button">My List</button>
+        <label class="search-wrap" aria-label="Cari film">
+          <button id="searchToggle" class="search-toggle" type="button" aria-label="Buka pencarian" aria-expanded="false"><svg class="search-icon" viewBox="0 0 24 24" aria-hidden="true"><circle cx="10.8" cy="10.8" r="6.8"/><path d="m16 16 5 5"/></svg></button>
+          <input id="searchInput" type="search" placeholder="Cari film, serial, atau orang…" autocomplete="off" />
+          <div id="searchResults" class="search-results" role="listbox" aria-label="Hasil pencarian"></div>
+        </label>
+        <div class="profile-dot" aria-hidden="true"></div>
+      </div>
     </nav>
 
-    <!-- Hero Banner -->
-    <header id="hero" class="relative w-full h-[85vh] md:h-[95vh] overflow-hidden rounded-b-[40px] shadow-sm transform-gpu hero-transition">
-        <!-- Background Fallback Image -->
-        <img id="hero-img" src="" alt="Hero" class="absolute inset-0 w-full h-full object-cover transition-opacity duration-1000">
-        
-        <!-- Video Wrapper -->
-        <div class="hero-video-wrapper" id="hero-video-container"></div>
-
-        <!-- Particle Canvas -->
-        <canvas id="particle-canvas"></canvas>
-
-        <!-- Overlay -->
-        <div class="absolute inset-0 hero-overlay z-10"></div>
-
-        <!-- Content -->
-        <div class="absolute inset-0 z-20 flex flex-col justify-end pb-24 px-6 md:px-16 lg:px-24">
-            <div id="hero-content" class="max-w-3xl transform transition-all duration-700 translate-y-8 opacity-0">
-                <div class="flex items-center gap-3 mb-4 text-white text-sm font-semibold text-shadow-cinematic">
-                    <span class="px-2 py-1 bg-white/20 backdrop-blur-md rounded-md" id="hero-rating">⭐ 0.0</span>
-                    <span id="hero-genre" class="uppercase tracking-wider text-white/90"></span>
-                </div>
-                <h2 id="hero-title" class="text-4xl md:text-6xl font-bold text-white mb-4 leading-tight text-shadow-cinematic tracking-tight">Loading...</h2>
-                <p id="hero-overview" class="text-base md:text-lg text-white/80 mb-8 line-clamp-3 text-shadow-cinematic font-medium max-w-2xl"></p>
-                
-                <div class="flex flex-wrap gap-4">
-                    <button id="btn-watch-hero" class="flex items-center gap-2 bg-white text-ios-text px-8 py-3.5 rounded-full font-semibold hover:scale-105 active:scale-95 transition-all shadow-[0_8px_30px_rgb(255,255,255,0.3)]">
-                        <i class="ph-fill ph-play text-xl"></i> Watch Now
-                    </button>
-                    <button id="btn-trailer-hero" class="flex items-center gap-2 glass text-white px-8 py-3.5 rounded-full font-semibold hover:bg-white/20 active:scale-95 transition-all">
-                        <i class="ph ph-film-strip text-xl"></i> Trailer
-                    </button>
-                </div>
-            </div>
-
-            <!-- Slide Indicators -->
-            <div class="absolute bottom-8 right-6 md:right-16 flex gap-2" id="hero-indicators"></div>
+    <header id="hero" class="hero">
+      <img id="hero-img" class="hero-image" alt="" />
+      <div id="hero-video-container" class="hero-video-wrapper" aria-hidden="true"></div>
+      <canvas id="particle-canvas" aria-hidden="true"></canvas>
+      <div class="hero-overlay"></div>
+      <div class="hero-content-wrap">
+        <div id="hero-content" class="hero-content">
+          <div class="hero-meta"><span id="hero-rating">⭐ 0.0</span><span id="hero-genre"></span></div>
+          <h2 id="hero-title">Loading…</h2>
+          <p id="hero-overview"></p>
+          <div class="hero-actions">
+            <button id="btn-watch-hero" class="button button-light"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M8 5v14l11-7z"/></svg> Watch Now</button>
+            <button id="btn-trailer-hero" class="button button-glass"><svg viewBox="0 0 24 24" aria-hidden="true"><rect x="3" y="5" width="18" height="14" rx="2"/><path d="M7 5v14M17 5v14M3 9h4m-4 6h4m10-6h4m-4 6h4"/></svg> Trailer</button>
+          </div>
         </div>
+        <div id="hero-indicators" class="hero-indicators" aria-label="Pilih film unggulan"></div>
+      </div>
     </header>
 
-    <!-- Main Content -->
-    <main class="relative z-20 -mt-10 pb-24" id="main-content">
-        <!-- Container for all rows -->
-        <div id="movies-container" class="flex flex-col gap-12">
-            <!-- Rows will be injected here via JS -->
-        </div>
-        
-        <!-- Infinite Scroll Loader -->
-        <div id="infinite-loader" class="w-full py-12 flex justify-center opacity-0 transition-opacity">
-            <div class="w-8 h-8 border-4 border-ios-accent border-t-transparent rounded-full animate-spin"></div>
-        </div>
+    <main id="main-content"><div id="movies-container" class="movies-container"></div>
+      <section id="browseSection" class="browse-section" aria-labelledby="browseTitle">
+        <div class="browse-heading"><div><p class="eyebrow">FIND YOUR NEXT FAVORITE</p><h2 id="browseTitle">Jelajahi film</h2><div class="media-tabs" role="tablist" aria-label="Jenis katalog"><button type="button" data-media-tab="movie" class="active" role="tab" aria-selected="true">Film</button><button type="button" data-media-tab="tv" role="tab" aria-selected="false">Serial TV</button></div></div><div class="browse-controls">
+          <label>Genre<select id="genreFilter"><option value="">Semua genre</option></select></label>
+          <label>Urutkan<select id="sortFilter"><option value="popularity.desc">Terpopuler</option><option value="vote_average.desc">Rating tertinggi</option><option value="primary_release_date.desc">Terbaru</option></select></label>
+        </div></div>
+        <div id="browseGrid" class="browse-grid" aria-live="polite"></div>
+        <p id="browseMessage" class="page-message" role="status"></p>
+        <button id="browseMore" class="button button-light browse-more" type="button">Muat lebih banyak</button>
+      </section>
+      <div id="infinite-loader" class="infinite-loader" aria-live="polite"><span class="spinner"></span></div>
+      <p id="page-message" class="page-message" role="status"></p>
     </main>
 
-    <!-- Modals -->
-    <!-- Watch Movie Modal -->
-    <div id="watchModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
-        <div class="absolute inset-0 glass-dark cursor-pointer" onclick="closeModal('watchModal')"></div>
-        <div class="relative w-full max-w-6xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl modal-enter" id="watchModalContent">
-            <button onclick="closeModal('watchModal')" class="absolute top-4 right-4 z-50 w-10 h-10 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors">
-                <i class="ph ph-x text-xl"></i>
-            </button>
-            <iframe id="watchIframe" class="w-full h-full" allowfullscreen></iframe>
-        </div>
+    <div id="movieModal" class="modal detail-modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Detail film">
+      <button class="modal-backdrop" data-close-modal="movieModal" aria-label="Tutup detail film"></button>
+      <section class="detail-panel" tabindex="-1"><button class="modal-close" data-close-modal="movieModal" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <div class="detail-backdrop"><img id="detailBackdrop" alt="" /></div>
+        <div class="detail-body"><img id="detailPoster" class="detail-poster" alt="" /><div class="detail-copy">
+          <p id="detailMeta" class="eyebrow"></p><h2 id="detailTitle">Memuat detail…</h2><p id="detailGenres" class="detail-genres"></p><p id="detailOverview" class="detail-overview"></p>
+          <div id="tvControls" class="tv-controls" hidden><label>Season<select id="tvSeason"></select></label><label>Episode<select id="tvEpisode"></select></label><button id="tvEpisodeWatch" class="button button-light" type="button" disabled>▶ Putar episode</button><p id="tvEpisodeOverview" class="tv-episode-overview"></p></div>
+          <details class="subtitle-settings detail-subtitle"><summary>Tambahkan subtitle VTT (opsional)</summary><div class="subtitle-fields"><label>Link file VTT<input id="detailSubtitleUrl" type="url" inputmode="url" placeholder="https://contoh.com/subtitle.vtt" /></label><label>Label<input id="detailSubtitleLabel" type="text" maxlength="40" placeholder="Bahasa Indonesia" /></label><button id="applyDetailSubtitle" class="button button-glass" type="button">Terapkan</button></div><p id="detailSubtitleFeedback" role="status">Gunakan link langsung HTTPS ke file .vtt.</p></details>
+          <div class="detail-actions"><button id="detailWatch" class="button button-light" type="button">▶ Putar film</button><button id="detailTrailer" class="button button-glass" type="button">Trailer</button><button id="detailSave" class="button button-glass" type="button">＋ My List</button></div>
+        </div></div>
+      </section>
     </div>
 
-    <!-- Trailer Modal -->
-    <div id="trailerModal" class="fixed inset-0 z-[100] hidden items-center justify-center p-4">
-        <div class="absolute inset-0 glass-dark cursor-pointer" onclick="closeModal('trailerModal')"></div>
-        <div class="relative w-full max-w-4xl aspect-video bg-black rounded-3xl overflow-hidden shadow-2xl modal-enter" id="trailerModalContent">
-            <button onclick="closeModal('trailerModal')" class="absolute top-4 right-4 z-50 w-10 h-10 bg-white/20 hover:bg-white/40 backdrop-blur-md rounded-full flex items-center justify-center text-white transition-colors">
-                <i class="ph ph-x text-xl"></i>
-            </button>
-            <iframe id="trailerIframe" class="w-full h-full" allowfullscreen allow="autoplay; encrypted-media"></iframe>
+    <div id="watchModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Pemutar film">
+      <button class="modal-backdrop" data-close-modal="watchModal" aria-label="Tutup pemutar"></button>
+      <section id="watchModalContent" class="modal-panel player-panel">
+        <button class="modal-close" data-close-modal="watchModal" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <div class="player-frame"><div id="player-loading" class="player-loading"><span class="spinner"></span><span>Memuat pemutar…</span></div>
+          <iframe id="watchIframe" title="VidLink movie player" allow="fullscreen; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+          <p id="player-error" class="player-error" hidden>Pemutar tidak merespons. Ketersediaan konten bergantung pada layanan VidLink.</p>
         </div>
+        <details class="subtitle-settings"><summary>Subtitle eksternal (opsional)</summary>
+          <div class="subtitle-fields"><label>Link file VTT<input id="subtitleUrl" type="url" inputmode="url" placeholder="https://contoh.com/subtitle.vtt" autocomplete="url" /></label><label>Label subtitle<input id="subtitleLabel" type="text" maxlength="40" placeholder="Bahasa Indonesia" /></label><button id="applySubtitle" class="button button-glass" type="button">Terapkan</button></div>
+          <p id="subtitleFeedback" role="status">Masukkan link langsung ke file VTT publik. Pengaturan hanya berlaku untuk pemutaran berikutnya.</p>
+        </details>
+      </section>
     </div>
 
-    <!-- Script Logic -->
-    <script>
-        // === CONFIGURATION ===
-        const API_KEY = '9752227dbc864a158b73bfbf29d830a5';
-        const BASE_URL = 'https://api.themoviedb.org/3';
-        const IMG_BASE = 'https://image.tmdb.org/t/p/w1280';
-        const IMG_POSTER = 'https://image.tmdb.org/t/p/w500';
-
-        // State
-        let heroMovies = [];
-        let currentHeroIndex = 0;
-        let heroInterval;
-        let infinitePage = 1;
-        let isFetchingInfinite = false;
-
-        const genresMap = {};
-
-        // Categories Configuration
-        const categories = [
-            { id: 'trending', title: 'Trending Now', endpoint: '/trending/movie/day' },
-            { id: 'popular', title: 'Apple TV+ Popular', endpoint: '/movie/popular' },
-            { id: 'top_rated', title: 'Critically Acclaimed', endpoint: '/movie/top_rated' },
-            { id: 'action', title: 'Action & Adventure', endpoint: '/discover/movie?with_genres=28' },
-            { id: 'scifi', title: 'Sci-Fi Universe', endpoint: '/discover/movie?with_genres=878' },
-            { id: 'comedy', title: 'Laugh Out Loud', endpoint: '/discover/movie?with_genres=35' },
-            { id: 'horror', title: 'Late Night Chills', endpoint: '/discover/movie?with_genres=27' }
-        ];
-
-        // === UTILITIES ===
-        async function fetchAPI(endpoint, extraParams = '') {
-            try {
-                const separator = endpoint.includes('?') ? '&' : '?';
-                const url = `${BASE_URL}${endpoint}${separator}api_key=${API_KEY}${extraParams}`;
-                const res = await fetch(url);
-                if (!res.ok) throw new Error('API Error');
-                return await res.json();
-            } catch (error) {
-                console.error("Fetch Error:", error);
-                return null;
-            }
-        }
-
-        async function fetchGenres() {
-            const data = await fetchAPI('/genre/movie/list');
-            if (data && data.genres) {
-                data.genres.forEach(g => genresMap[g.id] = g.name);
-            }
-        }
-
-        // === INITIALIZATION ===
-        async function initApp() {
-            await fetchGenres();
-            await initHero();
-            await renderAllRows();
-            initScrollEffects();
-            initParticles();
-            initInfiniteScroll();
-            initSearch();
-        }
-
-        // === HERO BANNER LOGIC ===
-        async function initHero() {
-            const data = await fetchAPI(categories[0].endpoint);
-            if (data && data.results) {
-                // Get top 5 movies for slider
-                heroMovies = data.results.slice(0, 5);
-                buildHeroIndicators();
-                updateHeroUI(0);
-                
-                // Auto slide every 10 seconds
-                heroInterval = setInterval(nextHero, 10000);
-            }
-        }
-
-        function buildHeroIndicators() {
-            const container = document.getElementById('hero-indicators');
-            container.innerHTML = heroMovies.map((_, i) => 
-                `<div class="w-12 h-1.5 rounded-full bg-white/30 cursor-pointer overflow-hidden relative" onclick="setHero(${i})">
-                    <div class="absolute top-0 left-0 h-full bg-white transition-all duration-1000 ease-linear" id="indicator-fill-${i}" style="width: 0%"></div>
-                </div>`
-            ).join('');
-        }
-
-        async function updateHeroUI(index) {
-            const movie = heroMovies[index];
-            const contentDiv = document.getElementById('hero-content');
-            
-            // Animation Out
-            contentDiv.classList.remove('translate-y-0', 'opacity-100');
-            contentDiv.classList.add('translate-y-8', 'opacity-0');
-
-            // Reset Indicators
-            heroMovies.forEach((_, i) => {
-                document.getElementById(`indicator-fill-${i}`).style.width = '0%';
-                document.getElementById(`indicator-fill-${i}`).style.transition = 'none';
-            });
-
-            setTimeout(async () => {
-                // Update text
-                document.getElementById('hero-title').innerText = movie.title || movie.name;
-                document.getElementById('hero-overview').innerText = movie.overview;
-                document.getElementById('hero-rating').innerText = `⭐ ${(movie.vote_average || 0).toFixed(1)}`;
-                document.getElementById('hero-genre').innerText = (movie.genre_ids || []).map(id => genresMap[id]).filter(Boolean).slice(0, 2).join(' • ');
-                
-                // Update Buttons Actions
-                document.getElementById('btn-watch-hero').onclick = () => openWatchModal(movie.id);
-                document.getElementById('btn-trailer-hero').onclick = () => playTrailerModal(movie.id);
-
-                // Update Image Fallback
-                const imgStr = movie.backdrop_path ? `${IMG_BASE}${movie.backdrop_path}` : '';
-                document.getElementById('hero-img').src = imgStr;
-
-                // Animate In
-                contentDiv.classList.remove('translate-y-8', 'opacity-0');
-                contentDiv.classList.add('translate-y-0', 'opacity-100');
-
-                // Animate Active Indicator
-                setTimeout(() => {
-                    const activeIndicator = document.getElementById(`indicator-fill-${index}`);
-                    activeIndicator.style.transition = 'width 10s linear';
-                    activeIndicator.style.width = '100%';
-                }, 50);
-
-                // Fetch and set background video
-                const vidData = await fetchAPI(`/movie/${movie.id}/videos`);
-                const videoContainer = document.getElementById('hero-video-container');
-                videoContainer.innerHTML = ''; // Clear previous
-
-                if (vidData && vidData.results && vidData.results.length > 0) {
-                    const trailer = vidData.results.find(v => v.type === 'Trailer') || vidData.results[0];
-                    if (trailer && trailer.site === 'YouTube') {
-                        const iframe = document.createElement('iframe');
-                        iframe.src = `https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&loop=1&playlist=${trailer.key}&modestbranding=1&playsinline=1`;
-                        iframe.allow = "autoplay; encrypted-media";
-                        iframe.onload = () => {
-                            // Fade in video slowly after load
-                            setTimeout(() => { iframe.style.opacity = '1'; }, 1000);
-                        };
-                        videoContainer.appendChild(iframe);
-                    }
-                }
-            }, 500); // Wait for fade out
-        }
-
-        function nextHero() {
-            currentHeroIndex = (currentHeroIndex + 1) % heroMovies.length;
-            updateHeroUI(currentHeroIndex);
-        }
-
-        function setHero(index) {
-            clearInterval(heroInterval);
-            currentHeroIndex = index;
-            updateHeroUI(currentHeroIndex);
-            heroInterval = setInterval(nextHero, 10000);
-        }
-
-        // === MOVIE ROWS & CARDS ===
-        function getSkeletonCards(count = 6) {
-            return Array(count).fill(0).map(() => `
-                <div class="flex-none w-36 md:w-48 lg:w-56 aspect-[2/3] rounded-2xl shimmer mr-4"></div>
-            `).join('');
-        }
-
-        async function renderAllRows() {
-            const container = document.getElementById('movies-container');
-            
-            for (const cat of categories) {
-                // Create section shell
-                const section = document.createElement('section');
-                section.className = "pl-6 md:pl-12 overflow-hidden";
-                section.innerHTML = `
-                    <h3 class="text-xl md:text-2xl font-bold mb-4 text-ios-text">${cat.title}</h3>
-                    <div class="flex overflow-x-auto hide-scrollbar pb-8 pt-4 -mt-4" id="row-${cat.id}">
-                        ${getSkeletonCards(8)}
-                    </div>
-                `;
-                container.appendChild(section);
-
-                // Fetch data
-                const data = await fetchAPI(cat.endpoint);
-                const rowElem = document.getElementById(`row-${cat.id}`);
-                
-                if (data && data.results) {
-                    rowElem.innerHTML = '';
-                    data.results.forEach(movie => {
-                        if (movie.poster_path) {
-                            rowElem.appendChild(createMovieCard(movie));
-                        }
-                    });
-                } else {
-                    rowElem.innerHTML = '<p class="text-ios-sub">Gagal memuat konten.</p>';
-                }
-            }
-        }
-
-        function createMovieCard(movie) {
-            const wrapper = document.createElement('div');
-            wrapper.className = "flex-none w-36 md:w-48 lg:w-56 mr-4 movie-card relative";
-            
-            const innerHTML = `
-                <div class="movie-poster-wrapper group">
-                    <img src="${IMG_POSTER}${movie.poster_path}" alt="${movie.title}" class="movie-poster" loading="lazy" onerror="this.src='https://via.placeholder.com/500x750?text=No+Image'">
-                    <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-300 flex flex-col justify-end p-4 z-20">
-                        <p class="text-white font-bold text-sm truncate">${movie.title || movie.name}</p>
-                        <div class="flex gap-2 text-xs text-white/80 mt-1">
-                            <span>⭐ ${movie.vote_average?.toFixed(1) || 'N/A'}</span>
-                            <span>${(movie.release_date || '').substring(0,4)}</span>
-                        </div>
-                    </div>
-                    <div class="hover-trailer" id="trailer-mini-${movie.id}"></div>
-                </div>
-            `;
-            wrapper.innerHTML = innerHTML;
-
-            // Interactions
-            wrapper.onclick = () => openWatchModal(movie.id);
-            init3DTiltEffect(wrapper);
-            initHoverTrailer(wrapper, movie.id);
-
-            return wrapper;
-        }
-
-        // 3D Hover Effect
-        function init3DTiltEffect(card) {
-            card.addEventListener('mousemove', (e) => {
-                const rect = card.getBoundingClientRect();
-                const x = e.clientX - rect.left;
-                const y = e.clientY - rect.top;
-                const xPct = x / rect.width - 0.5;
-                const yPct = y / rect.height - 0.5;
-                
-                // Tilt calculation
-                card.style.transform = `perspective(1000px) rotateX(${-yPct * 20}deg) rotateY(${xPct * 20}deg) scale3d(1.05, 1.05, 1.05)`;
-            });
-
-            card.addEventListener('mouseleave', () => {
-                card.style.transform = `perspective(1000px) rotateX(0deg) rotateY(0deg) scale3d(1, 1, 1)`;
-            });
-        }
-
-        // Hover Trailer (Delayed fetch to save API)
-        function initHoverTrailer(card, movieId) {
-            let hoverTimer;
-            const trailerContainer = card.querySelector(`#trailer-mini-${movieId}`);
-
-            card.addEventListener('mouseenter', () => {
-                hoverTimer = setTimeout(async () => {
-                    // Check if already loaded
-                    if (trailerContainer.innerHTML !== '') {
-                        trailerContainer.style.opacity = '1';
-                        return;
-                    }
-
-                    const vidData = await fetchAPI(`/movie/${movieId}/videos`);
-                    if (vidData && vidData.results && vidData.results.length > 0) {
-                        const trailer = vidData.results.find(v => v.type === 'Trailer') || vidData.results[0];
-                        if (trailer && trailer.site === 'YouTube') {
-                            trailerContainer.innerHTML = `<iframe src="https://www.youtube.com/embed/${trailer.key}?autoplay=1&mute=1&controls=0&showinfo=0&rel=0&modestbranding=1&playsinline=1" class="w-full h-full object-cover transform scale-150 pointer-events-none" allow="autoplay"></iframe>`;
-                            setTimeout(() => trailerContainer.style.opacity = '1', 500);
-                        }
-                    }
-                }, 800); // 800ms delay before loading iframe
-            });
-
-            card.addEventListener('mouseleave', () => {
-                clearTimeout(hoverTimer);
-                trailerContainer.style.opacity = '0';
-                // Option: clear iframe to save memory, or keep it cached
-                // trailerContainer.innerHTML = ''; 
-            });
-        }
-
-        // === MODALS ===
-        function openWatchModal(movieId) {
-            const modal = document.getElementById('watchModal');
-            const iframe = document.getElementById('watchIframe');
-            const content = document.getElementById('watchModalContent');
-            
-            iframe.src = `https://vidsrc.me/embed/movie?tmdb=${movieId}`;
-            
-            modal.classList.remove('hidden');
-            modal.classList.add('flex');
-            // Trigger animation
-            setTimeout(() => content.classList.add('modal-enter-active'), 10);
-            document.body.style.overflow = 'hidden';
-        }
-
-        async function playTrailerModal(movieId) {
-            const data = await fetchAPI(`/movie/${movieId}/videos`);
-            if (data && data.results && data.results.length > 0) {
-                const trailer = data.results.find(v => v.type === 'Trailer') || data.results[0];
-                if (trailer && trailer.site === 'YouTube') {
-                    const modal = document.getElementById('trailerModal');
-                    const iframe = document.getElementById('trailerIframe');
-                    const content = document.getElementById('trailerModalContent');
-                    
-                    iframe.src = `https://www.youtube.com/embed/${trailer.key}?autoplay=1`;
-                    
-                    modal.classList.remove('hidden');
-                    modal.classList.add('flex');
-                    setTimeout(() => content.classList.add('modal-enter-active'), 10);
-                    document.body.style.overflow = 'hidden';
-                } else {
-                    alert('Trailer tidak tersedia.');
-                }
-            } else {
-                alert('Trailer tidak tersedia.');
-            }
-        }
-
-        function closeModal(modalId) {
-            const modal = document.getElementById(modalId);
-            const iframe = modal.querySelector('iframe');
-            const content = modal.querySelector('.modal-enter');
-            
-            content.classList.remove('modal-enter-active');
-            
-            setTimeout(() => {
-                modal.classList.add('hidden');
-                modal.classList.remove('flex');
-                iframe.src = ''; // Stop video
-                document.body.style.overflow = 'auto';
-            }, 300);
-        }
-
-        // === SCROLL EFFECTS (Disney+ / Apple TV Style) ===
-        function initScrollEffects() {
-            const navbar = document.getElementById('navbar');
-            const hero = document.getElementById('hero');
-            
-            window.addEventListener('scroll', () => {
-                const scrollY = window.scrollY;
-                
-                // Navbar Glass effect
-                if (scrollY > 50) {
-                    navbar.classList.add('glass');
-                    navbar.classList.remove('py-4');
-                    navbar.classList.add('py-2');
-                } else {
-                    navbar.classList.remove('glass');
-                    navbar.classList.add('py-4');
-                    navbar.classList.remove('py-2');
-                }
-
-                // Hero shrinking parallax effect
-                if (scrollY < 800) {
-                    const scale = Math.max(0.9, 1 - (scrollY / 3000));
-                    const opacity = Math.max(0, 1 - (scrollY / 600));
-                    hero.style.transform = `scale(${scale}) translateY(${scrollY * 0.4}px)`;
-                    document.getElementById('hero-content').style.opacity = opacity;
-                }
-            });
-        }
-
-        // === SEARCH SYSTEM ===
-        function initSearch() {
-            const input = document.getElementById('searchInput');
-            const resultsBox = document.getElementById('searchResults');
-            let timeout = null;
-
-            input.addEventListener('input', (e) => {
-                clearTimeout(timeout);
-                const query = e.target.value.trim();
-                
-                if (query.length < 2) {
-                    resultsBox.innerHTML = '';
-                    return;
-                }
-
-                timeout = setTimeout(async () => {
-                    resultsBox.innerHTML = '<div class="text-center py-2"><div class="w-5 h-5 border-2 border-ios-accent border-t-transparent rounded-full animate-spin mx-auto"></div></div>';
-                    
-                    const data = await fetchAPI('/search/movie', `&query=${encodeURIComponent(query)}`);
-                    if (data && data.results && data.results.length > 0) {
-                        resultsBox.innerHTML = data.results.slice(0, 6).map(m => `
-                            <div class="flex items-center gap-3 p-2 hover:bg-ios-bg rounded-lg cursor-pointer transition-colors" onclick="openWatchModal(${m.id})">
-                                <img src="${m.poster_path ? IMG_POSTER+m.poster_path : 'https://via.placeholder.com/100x150?text=NA'}" class="w-10 h-14 object-cover rounded shadow-sm">
-                                <div class="flex-1 min-w-0">
-                                    <h4 class="text-sm font-semibold text-ios-text truncate">${m.title}</h4>
-                                    <p class="text-xs text-ios-sub">${(m.release_date || '').substring(0,4)}</p>
-                                </div>
-                            </div>
-                        `).join('');
-                    } else {
-                        resultsBox.innerHTML = '<p class="text-sm text-center text-ios-sub py-2">Tidak ditemukan.</p>';
-                    }
-                }, 500);
-            });
-        }
-
-        // === INFINITE LOADING ===
-        function initInfiniteScroll() {
-            const observer = new IntersectionObserver(async (entries) => {
-                if (entries[0].isIntersecting && !isFetchingInfinite) {
-                    isFetchingInfinite = true;
-                    document.getElementById('infinite-loader').style.opacity = '1';
-                    
-                    infinitePage++;
-                    // Mix of discover to simulate infinite content
-                    const data = await fetchAPI('/discover/movie', `&sort_by=popularity.desc&page=${infinitePage}`);
-                    
-                    if (data && data.results) {
-                        // Create new row
-                        const section = document.createElement('section');
-                        section.className = "pl-6 md:pl-12 overflow-hidden fade-in";
-                        section.innerHTML = `
-                            <h3 class="text-xl md:text-2xl font-bold mb-4 text-ios-text">More Discoveries Page ${infinitePage}</h3>
-                            <div class="flex overflow-x-auto hide-scrollbar pb-8 pt-4 -mt-4">
-                                ${data.results.filter(m => m.poster_path).map(m => createMovieCard(m).outerHTML).join('')}
-                            </div>
-                        `;
-                        
-                        // Re-attach listeners to new cards
-                        document.getElementById('movies-container').appendChild(section);
-                        const newCards = section.querySelectorAll('.movie-card');
-                        newCards.forEach(card => {
-                            // Extract ID from onclick string (hacky but works for generated HTML string)
-                            const idStr = card.getAttribute('onclick')?.match(/\d+/);
-                            if(idStr) {
-                                init3DTiltEffect(card);
-                                initHoverTrailer(card, parseInt(idStr[0]));
-                            }
-                        });
-                    }
-                    
-                    document.getElementById('infinite-loader').style.opacity = '0';
-                    isFetchingInfinite = false;
-                }
-            }, { rootMargin: '200px' });
-
-            observer.observe(document.getElementById('infinite-loader'));
-        }
-
-        // === CANVAS PARTICLE SYSTEM (Cinematic Ambience) ===
-        function initParticles() {
-            const canvas = document.getElementById('particle-canvas');
-            const ctx = canvas.getContext('2d');
-            let particles = [];
-            
-            function resize() {
-                canvas.width = window.innerWidth;
-                canvas.height = window.innerHeight * 0.9; // Match hero height roughly
-            }
-            window.addEventListener('resize', resize);
-            resize();
-
-            class Particle {
-                constructor() {
-                    this.x = Math.random() * canvas.width;
-                    this.y = Math.random() * canvas.height;
-                    this.size = Math.random() * 2 + 0.5;
-                    this.speedX = Math.random() * 0.5 - 0.25;
-                    this.speedY = Math.random() * -0.5 - 0.1; // Float up
-                    this.opacity = Math.random() * 0.5 + 0.1;
-                }
-                update() {
-                    this.x += this.speedX;
-                    this.y += this.speedY;
-                    if (this.y < 0) {
-                        this.y = canvas.height;
-                        this.x = Math.random() * canvas.width;
-                    }
-                }
-                draw() {
-                    ctx.fillStyle = `rgba(255, 255, 255, ${this.opacity})`;
-                    ctx.beginPath();
-                    ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-                    ctx.fill();
-                }
-            }
-
-            // Optimize count based on screen width
-            const count = window.innerWidth < 768 ? 30 : 80;
-            for (let i = 0; i < count; i++) particles.push(new Particle());
-
-            function animate() {
-                ctx.clearRect(0, 0, canvas.width, canvas.height);
-                particles.forEach(p => { p.update(); p.draw(); });
-                requestAnimationFrame(animate);
-            }
-            animate();
-        }
-
-        // Start App
-        document.addEventListener('DOMContentLoaded', initApp);
-
-    </script>
-</body>
+    <div id="trailerModal" class="modal" aria-hidden="true" role="dialog" aria-modal="true" aria-label="Trailer film">
+      <button class="modal-backdrop" data-close-modal="trailerModal" aria-label="Tutup trailer"></button>
+      <section class="modal-panel trailer-panel">
+        <button class="modal-close" data-close-modal="trailerModal" aria-label="Tutup"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+        <iframe id="trailerIframe" title="Trailer YouTube" allow="accelerometer; autoplay; encrypted-media; gyroscope; picture-in-picture" allowfullscreen referrerpolicy="strict-origin-when-cross-origin"></iframe>
+      </section>
+    </div>
+    <script type="module" src="/src/js/main.js"></script>
+  </body>
 </html>
-
