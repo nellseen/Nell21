@@ -2,11 +2,21 @@ import { byId } from '../utils/dom.js';
 import { isMovieId, isTvEpisode } from '../utils/validators.js';
 import { setMediaOverlay } from '../utils/media-overlays.js';
 const VIDLINK_ORIGIN = 'https://vidlink.pro';
+const PLAYER_MODE_KEY = 'tianetflix.player-mode.v1';
 let frameTimer;
 const subtitleSettings = new Map();
 let activeSubtitleKey = null;
+let activePlayerType = readPlayerType();
+let activePlayerContext = null;
 
-function addPlayerOptions(url, subtitles) {
+function readPlayerType() {
+  if (typeof window === 'undefined') return 'default';
+  try { return window.localStorage.getItem(PLAYER_MODE_KEY) === 'jw' ? 'jw' : 'default'; }
+  catch { return 'default'; }
+}
+
+function addPlayerOptions(url, subtitles, playerType) {
+  if (!['default', 'jw'].includes(playerType)) throw new TypeError('Jenis player tidak valid.');
   url.searchParams.set('primaryColor', '007AFF');
   url.searchParams.set('secondaryColor', '1D1D1F');
   url.searchParams.set('iconColor', 'FFFFFF');
@@ -14,19 +24,20 @@ function addPlayerOptions(url, subtitles) {
   url.searchParams.set('title', 'true');
   url.searchParams.set('poster', 'true');
   url.searchParams.set('autoplay', 'false');
+  if (playerType === 'jw') url.searchParams.set('player', 'jw');
   if (subtitles?.file) {
     url.searchParams.set('sub_file', subtitles.file);
     if (subtitles.label) url.searchParams.set('sub_label', subtitles.label);
   }
   return url.href;
 }
-export function moviePlayerUrl(tmdbId, subtitles = null) {
+export function moviePlayerUrl(tmdbId, subtitles = null, playerType = 'default') {
   if (!isMovieId(tmdbId)) throw new TypeError('ID film tidak valid.');
-  return addPlayerOptions(new URL(`/movie/${Number(tmdbId)}`, VIDLINK_ORIGIN), subtitles);
+  return addPlayerOptions(new URL(`/movie/${Number(tmdbId)}`, VIDLINK_ORIGIN), subtitles, playerType);
 }
-export function tvPlayerUrl(tmdbId, season, episode, subtitles = null) {
+export function tvPlayerUrl(tmdbId, season, episode, subtitles = null, playerType = 'default') {
   if (!isMovieId(tmdbId) || !isTvEpisode(season, episode)) throw new TypeError('ID serial, season, atau episode tidak valid.');
-  return addPlayerOptions(new URL(`/tv/${Number(tmdbId)}/${Number(season)}/${Number(episode)}`, VIDLINK_ORIGIN), subtitles);
+  return addPlayerOptions(new URL(`/tv/${Number(tmdbId)}/${Number(season)}/${Number(episode)}`, VIDLINK_ORIGIN), subtitles, playerType);
 }
 export function getSubtitleSettings() { return activeSubtitleKey ? subtitleSettings.get(activeSubtitleKey) || null : null; }
 export function selectSubtitleTarget(mediaType, id, season, episode) {
@@ -67,6 +78,7 @@ function openPlayerUrl(targetKey, source) {
   if (byId('subtitleUrl')) byId('subtitleUrl').value = saved?.file || '';
   if (byId('subtitleLabel')) byId('subtitleLabel').value = saved?.label || '';
   byId('player-error').hidden = true;
+  updatePlayerModeUi();
   byId('player-loading').classList.remove('done');
   frame.onload = () => { clearTimeout(frameTimer); byId('player-loading').classList.add('done'); };
   modal.classList.add('open'); modal.setAttribute('aria-hidden', 'false');
@@ -79,20 +91,44 @@ function openPlayerUrl(targetKey, source) {
 }
 export function openPlayer(movieId, subtitles) {
   if (!isMovieId(movieId)) { byId('player-error').hidden = false; return; }
+  activePlayerContext = { mediaType: 'movie', id: Number(movieId) };
   selectSubtitleTarget('movie', movieId);
-  try { openPlayerUrl(activeSubtitleKey, moviePlayerUrl(movieId, subtitles === undefined ? getSubtitleSettings() : subtitles)); }
+  try { openPlayerUrl(activeSubtitleKey, moviePlayerUrl(movieId, subtitles === undefined ? getSubtitleSettings() : subtitles, activePlayerType)); }
   catch { byId('player-error').hidden = false; }
 }
 export function openTvPlayer(tvId, season, episode, subtitles) {
   if (!isMovieId(tvId) || !isTvEpisode(season, episode)) { byId('player-error').hidden = false; return; }
+  activePlayerContext = { mediaType: 'tv', id: Number(tvId), season: Number(season), episode: Number(episode) };
   selectSubtitleTarget('tv', tvId, season, episode);
-  try { openPlayerUrl(activeSubtitleKey, tvPlayerUrl(tvId, season, episode, subtitles === undefined ? getSubtitleSettings() : subtitles)); }
+  try { openPlayerUrl(activeSubtitleKey, tvPlayerUrl(tvId, season, episode, subtitles === undefined ? getSubtitleSettings() : subtitles, activePlayerType)); }
   catch { byId('player-error').hidden = false; }
+}
+function updatePlayerModeUi() {
+  const mode = byId('playerModeLabel'); const toggle = byId('playerModeToggle');
+  if (!mode || !toggle) return;
+  mode.textContent = activePlayerType === 'jw' ? 'JW Player' : 'Player standar';
+  toggle.textContent = activePlayerType === 'jw' ? 'Pakai player standar' : 'Coba JW Player';
+}
+export function togglePlayerMode() {
+  if (!activePlayerContext || !byId('watchModal').classList.contains('open')) return;
+  activePlayerType = activePlayerType === 'jw' ? 'default' : 'jw';
+  try { if (typeof window !== 'undefined') window.localStorage.setItem(PLAYER_MODE_KEY, activePlayerType); } catch { /* Player choice remains active for this page. */ }
+  const { mediaType, id, season, episode } = activePlayerContext;
+  const subtitles = getSubtitleSettings();
+  const subtitleDraft = byId('subtitleUrl')?.value || '';
+  const subtitleLabelDraft = byId('subtitleLabel')?.value || '';
+  const source = mediaType === 'tv'
+    ? tvPlayerUrl(id, season, episode, subtitles, activePlayerType)
+    : moviePlayerUrl(id, subtitles, activePlayerType);
+  openPlayerUrl(activeSubtitleKey, source);
+  if (byId('subtitleUrl')) byId('subtitleUrl').value = subtitleDraft;
+  if (byId('subtitleLabel')) byId('subtitleLabel').value = subtitleLabelDraft;
 }
 export function closePlayer() {
   const modal = byId('watchModal');
   modal.classList.remove('open'); modal.setAttribute('aria-hidden', 'true');
   setMediaOverlay('player', false);
+  activePlayerContext = null;
   byId('watchIframe').src = 'about:blank';
   byId('player-loading').classList.remove('done'); byId('player-error').hidden = true;
   clearTimeout(frameTimer);

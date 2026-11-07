@@ -2,7 +2,7 @@ import '../css/main.css';
 import { initHome, initParticles, initScrollEffects, pauseAmbientEffects, playTrailer, resumeAmbientEffects } from './modules/home.js';
 import { initSearch } from './modules/search.js';
 import { initInfiniteScroll } from './modules/infinite-scroll.js';
-import { applySubtitleSettings, closePlayer, handlePlayerMessage, openPlayer } from './modules/player.js';
+import { applySubtitleSettings, closePlayer, handlePlayerMessage, openPlayer, togglePlayerMode } from './modules/player.js';
 import { closeTrailer } from './modules/trailers.js';
 import { byId } from './utils/dom.js';
 import { bindDetailActions, closeDetails, showMovieDetails, showPersonDetails } from './modules/details.js';
@@ -58,6 +58,7 @@ function bindInteractions() {
     catch (error) { byId('page-message').textContent = error.message || 'Trailer tidak tersedia.'; }
   });
   byId('applySubtitle').addEventListener('click', () => { try { applySubtitleSettings(); } catch { /* Feedback is rendered beside the form. */ } });
+  byId('playerModeToggle').addEventListener('click', togglePlayerMode);
   window.addEventListener('message', handlePlayerMessage);
 }
 document.addEventListener('DOMContentLoaded', async () => {

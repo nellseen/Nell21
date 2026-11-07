@@ -15,6 +15,9 @@ test('startup requires one TMDB credential', () => {
   assert.throws(() => readConfig({ PORT: '3000' }), /TMDB_API_KEY atau TMDB_ACCESS_TOKEN/);
   assert.equal(readConfig({ TMDB_API_KEY: 'key' }).tmdbApiKey, 'key');
   assert.equal(readConfig({ TMDB_ACCESS_TOKEN: 'token' }).tmdbAccessToken, 'token');
+  assert.throws(() => readConfig({ TMDB_API_KEY: 'key', UPSTASH_REDIS_REST_URL: 'https://redis.example' }), /diisi berpasangan/);
+  assert.throws(() => readConfig({ TMDB_API_KEY: 'key', UPSTASH_REDIS_REST_URL: 'http://redis.example', UPSTASH_REDIS_REST_TOKEN: 'token' }), /HTTPS/);
+  assert.equal(readConfig({ TMDB_API_KEY: 'key', VERCEL: '1' }).trustProxy, 1);
 });
 
 test('API validates input, calls fixed TMDB routes, and never echoes credentials', async () => {

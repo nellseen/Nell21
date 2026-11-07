@@ -10,12 +10,15 @@ test('VidLink URL accepts only positive integer TMDB movie ids and documented op
   assert.throws(() => moviePlayerUrl('1/2'), /ID film tidak valid/);
   assert.throws(() => moviePlayerUrl(-1), /ID film tidak valid/);
   assert.equal(isMovieId(Number.MAX_SAFE_INTEGER + 1), false);
+  assert.match(moviePlayerUrl(969681, null, 'jw'), /[?&]player=jw(?:&|$)/);
+  assert.throws(() => moviePlayerUrl(969681, null, 'unknown'), /player/i);
 });
 
 test('VidLink TV URL requires a valid season and episode', () => {
   assert.equal(tvPlayerUrl(296206, 1, 1), 'https://vidlink.pro/tv/296206/1/1?primaryColor=007AFF&secondaryColor=1D1D1F&iconColor=FFFFFF&icons=default&title=true&poster=true&autoplay=false');
   assert.throws(() => tvPlayerUrl(296206, -1, 1), /season/i);
   assert.throws(() => tvPlayerUrl(296206, 1, 0), /season/i);
+  assert.match(tvPlayerUrl(296206, 1, 1, null, 'jw'), /[?&]player=jw(?:&|$)/);
 });
 
 test('VidLink iframe is not sandboxed to preserve player compatibility', async () => {

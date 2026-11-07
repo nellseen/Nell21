@@ -2,15 +2,16 @@ import express from 'express';
 import cors from 'cors';
 import { readConfig } from './config/env.js';
 import tmdbRoutes from './routes/tmdb.routes.js';
-import { apiRateLimit } from './middleware/rate-limit.js';
+import { createApiRateLimit } from './middleware/rate-limit.js';
 import { errorHandler } from './middleware/error-handler.js';
 
 export function createApp(config) {
   const app = express(); app.disable('x-powered-by'); app.locals.config = config;
+  app.set('trust proxy', config.trustProxy || false);
   app.use(cors({ origin(origin, callback) { if (!origin || config.clientOrigins.includes(origin)) return callback(null, true); const error = new Error('Origin tidak diizinkan.'); error.status = 403; return callback(error, false); }, methods: ['GET'], allowedHeaders: ['Accept', 'Content-Type'], maxAge: 600 }));
   app.use(express.json({ limit: '16kb' }));
   app.get('/api/health', (req, res) => res.json({ status: 'ok' }));
-  app.use('/api', apiRateLimit, tmdbRoutes);
+  app.use('/api', createApiRateLimit(config), tmdbRoutes);
   app.use((req, res) => res.status(404).json({ error: 'Endpoint tidak ditemukan.' }));
   app.use(errorHandler);
   return app;

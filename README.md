@@ -6,7 +6,7 @@ Frontend mencakup film dan serial TV: trending, popular, top-rated, on-air, filt
 
 ## Persyaratan
 
-- Node.js 20 atau lebih baru
+- Node.js 22.12 atau lebih baru
 - npm 10 atau lebih baru
 - Credential TMDB: API key v3 **atau** API Read Access Token v4
 
@@ -37,7 +37,16 @@ npm run build
 npm run preview
 ```
 
-Build menghasilkan `dist/` untuk hosting frontend statis. Deploy backend Express secara terpisah, set environment variable di hosting server, lalu arahkan reverse proxy `/api` ke backend. Jangan publikasikan `.env` atau menaruh credential TMDB di frontend. CSS dan ikon SVG dibundel secara lokal; browser hanya meminta sumber eksternal saat memuat gambar TMDB, trailer YouTube, dan player VidLink.
+Build menghasilkan frontend statis di `public/`, yang disajikan Vercel lewat CDN. Root `index.js` mengekspor aplikasi Express agar Vercel menjalankan endpoint backend sebagai Function. `vercel.json` memilih framework Express dan menjalankan `npm run build`. Untuk deploy Vercel, import repo, pastikan Node.js 26 (default) atau minimal 22.12, lalu isi environment variables backend di Project Settings. TMDB API key atau access token tetap wajib. Jangan publikasikan `.env` atau menaruh credential TMDB di frontend. CSS dan ikon SVG dibundel lokal; browser hanya meminta sumber eksternal saat memuat gambar TMDB, trailer YouTube, dan player VidLink.
+
+### Shared rate limit di Vercel
+
+Limiter memakai Upstash Redis REST bila dua environment variable ini tersedia:
+
+- `UPSTASH_REDIS_REST_URL`
+- `UPSTASH_REDIS_REST_TOKEN`
+
+Buat database Redis di Upstash, lalu salin URL dan token REST ke Vercel Project Settings untuk Production, Preview, dan Development sesuai kebutuhan. Saat kedua variabel belum disetel, deployment tetap bisa berjalan memakai limiter memory lokal per instance; pada Vercel ini hanya fallback dan hitungan tidak dibagi antar instance. Bila Upstash lambat/gagal, backend menggunakan fallback lokal sementara agar katalog tetap merespons. Limiter membatasi 90 request API per menit per IP, memakai IP forwarded dari Vercel, dan fallback dibatasi maksimum 1,5 detik menunggu Upstash.
 
 ## Endpoint API
 
@@ -65,7 +74,7 @@ Semua endpoint hanya menerima GET dan berada di bawah `/api`.
 | `/api/tv/:id/season/:season/episode/:episode` | Detail episode |
 | `/api/people/:id` | Profil orang beserta kredit film/serial |
 
-Backend memvalidasi parameter, memberi timeout upstream 8 detik, cache memori 60 detik, dan membatasi laju API hingga 90 request per menit per alamat klien. Endpoint memakai daftar route dan sort yang diizinkan; tidak ada proxy URL generik. Kegagalan TMDB ditampilkan sebagai pesan aman.
+Backend memvalidasi parameter, memberi timeout upstream 8 detik, cache memori 60 detik, dan membatasi laju API hingga 90 request per menit per alamat klien. Di Vercel, shared rate limiting tersedia melalui Upstash Redis REST; tanpa konfigurasi Upstash, limiter memory hanya berlaku per instance. Endpoint memakai daftar route dan sort yang diizinkan; tidak ada proxy URL generik. Kegagalan TMDB ditampilkan sebagai pesan aman.
 
 ## TMDB, VidLink, dan batasan
 
